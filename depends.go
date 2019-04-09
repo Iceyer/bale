@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func copy(src, dest string) error {
+func copyFile(src, dest string) error {
 	s, err := os.Open(src)
 	if nil != err {
 		return err
@@ -84,7 +84,9 @@ var blockList = []string{
 
 var bashTemplate = `#!/bin/sh
 HERE="$(dirname "$(readlink -f "${0}")")"
-export LD_LIBRARY_PATH="${HERE}"/libs/
+export LD_LIBRARY_PATH="${HERE}"/libs
+export QT_PLUGIN_PATH="${HERE}"/plugins 
+export QT_QPA_PLATFORM_PLUGIN_PATH="${HERE}"/plugins/platforms
 exec "${HERE}"/%v $@
 `
 
@@ -118,7 +120,8 @@ func (d *Depends) dependencies() (list []string) {
 }
 
 // Install libraries to outDir
-func (d *Depends) Install(outDir string) error {
+func (d *Depends) Install(outDir string, qtPlugin bool) error {
+
 	err := os.MkdirAll(outDir, 0755)
 	if nil != err {
 		return err
@@ -127,17 +130,41 @@ func (d *Depends) Install(outDir string) error {
 	if nil != err {
 		return err
 	}
+	err = os.MkdirAll(outDir+"/plugins", 0755)
+	if nil != err {
+		return err
+	}
+
+	if qtPlugin {
+		qtPluginRoot, qtPluginList := getQtPluginFileList()
+		for _, so := range qtPluginList {
+			d.getSharedLibraryDependencies(so)
+		}
+
+		// install qt plugin
+		for _, so := range qtPluginList {
+			rel, _ := filepath.Rel(qtPluginRoot, so)
+			dest := filepath.Join(outDir, "plugins", rel)
+			dir := filepath.Dir(dest)
+			os.MkdirAll(dir, 0755)
+			err = copyFile(so, dest)
+			if nil != err {
+				return err
+			}
+		}
+	}
+
 	for _, v := range d.dependencies() {
 		f := strings.Split(v, "/")
 		filename := outDir + "/libs/" + f[len(f)-1]
-		err = copy(v, filename)
+		err = copyFile(v, filename)
 		if nil != err {
 			return err
 		}
 	}
 	f := strings.Split(d.binPath, "/")
 	filename := outDir + "/" + f[len(f)-1]
-	err = copy(d.binPath, filename)
+	err = copyFile(d.binPath, filename)
 	if nil != err {
 		return err
 	}
