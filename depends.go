@@ -9,6 +9,19 @@ import (
 	"strings"
 )
 
+func getPluginLibList(dirs []string) (list []string) {
+	for _, dir := range dirs {
+		filepath.Walk(dir,
+			func(path string, info os.FileInfo, err error) error {
+				if filepath.Ext(path) != ".so" {
+					return nil
+				}
+				list = append(list, path)
+				return nil
+			})
+	}
+	return
+}
 func copyFile(src, dest string) error {
 	s, err := os.Open(src)
 	if nil != err {
@@ -119,9 +132,22 @@ func (d *Depends) dependencies() (list []string) {
 	return
 }
 
-// Install libraries to outDir
-func (d *Depends) Install(outDir string, qtPlugin bool) error {
+func (d *Depends) installPlugin(outDir, root string, list []string) error {
+	for _, so := range list {
+		rel, _ := filepath.Rel(root, so)
+		dest := filepath.Join(outDir, "libs", rel)
+		dir := filepath.Dir(dest)
+		os.MkdirAll(dir, 0755)
+		err := copyFile(so, dest)
+		if nil != err {
+			return err
+		}
+	}
+	return nil
+}
 
+// Install libraries to outDir
+func (d *Depends) Install(outDir string, qtPlugin bool, pluginList listFlags) error {
 	err := os.MkdirAll(outDir, 0755)
 	if nil != err {
 		return err
@@ -152,6 +178,17 @@ func (d *Depends) Install(outDir string, qtPlugin bool) error {
 				return err
 			}
 		}
+	}
+
+	for _, v := range pluginList {
+		sep := strings.Split(v, ":")
+		root := sep[0]
+		dir := sep[1]
+		list := getPluginLibList([]string{dir})
+		for _, so := range list {
+			d.getSharedLibraryDependencies(so)
+		}
+		d.installPlugin(outDir, root, list)
 	}
 
 	for _, v := range d.dependencies() {
