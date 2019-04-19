@@ -11,14 +11,20 @@ import (
 
 func getPluginLibList(dirs []string) (list []string) {
 	for _, dir := range dirs {
-		filepath.Walk(dir,
-			func(path string, info os.FileInfo, err error) error {
-				if filepath.Ext(path) != ".so" {
+
+		stat, _ := os.Stat(dir)
+		if stat.IsDir() {
+			filepath.Walk(dir,
+				func(path string, info os.FileInfo, err error) error {
+					if filepath.Ext(path) != ".so" {
+						return nil
+					}
+					list = append(list, path)
 					return nil
-				}
-				list = append(list, path)
-				return nil
-			})
+				})
+		} else {
+			list = append(list, dir)
+		}
 	}
 	return
 }

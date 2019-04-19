@@ -23,7 +23,7 @@ func main() {
 	binPath := flag.String("path", "", "bin path")
 	outDir := flag.String("out", "", "output directory")
 	qtPlugin := flag.Bool("qt", false, "enable qt plugin")
-	flag.Var(&pluginList, "plugin", "plugin dir: like /usr/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu/nss/")
+	flag.Var(&pluginList, "plugin", "plugin dir or file, like: \n/usr/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu/nss \n/usr/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu/nss/libfreebl3.so")
 
 	flag.Parse()
 
